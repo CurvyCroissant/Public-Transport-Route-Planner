@@ -57,11 +57,6 @@ class RoutePlannerController extends Controller
     public function livePositions(string $routeId): JsonResponse
     {
         $vehicles = $this->repo->getLiveVehicles($routeId);
-
-        if (empty($vehicles)) {
-            return response()->json(['message' => 'No live vehicles'], 404);
-        }
-
         return response()->json(['vehicles' => $vehicles]);
     }
 

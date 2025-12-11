@@ -8,6 +8,8 @@
 
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=dm-sans:400,500,600,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -87,15 +89,26 @@
                     </div>
 
                     <div class="border border-slate-200 rounded-2xl bg-white p-4 space-y-2" data-map-wrap>
-                        <p class="text-xs font-semibold text-emerald-700">Map</p>
-                        <div class="text-sm text-slate-600 border border-emerald-100 rounded-xl bg-white p-3">
-                            Map is currently not available.
+                        <div class="flex items-center justify-between">
+                            <p class="text-xs font-semibold text-emerald-700">Map</p>
+                            <button data-map-reset type="button"
+                                class="text-xs px-3 py-1 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 transition">
+                                Reset zoom
+                            </button>
+                        </div>
+                        <div data-map class="h-80 rounded-xl border border-emerald-100 overflow-hidden bg-white">
+                            <div class="flex h-full items-center justify-center text-sm text-slate-600">
+                                Map will show stops and live vehicles when a stop is selected.
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </body>
 
 </html>
