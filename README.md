@@ -1,6 +1,8 @@
 # Public-Transport-Route-Planner
 
-Laravel + Vite demo for a public transport route planner (corridors, stops, arrivals, live vehicles, notices, on-time insight, map placeholder).
+Laravel + Vite demo for a public transport route planner with static demo data (corridors, stops, arrivals, live vehicles, notices, on-time insight, map).
+
+The Laravel application lives in the `App/` folder.
 
 ## Prerequisites
 
@@ -10,6 +12,12 @@ Laravel + Vite demo for a public transport route planner (corridors, stops, arri
 - MySQL (or adjust `.env`)
 
 ## Setup
+
+1. Go to the Laravel app folder
+
+```pwsh
+Set-Location App
+```
 
 1. Install dependencies
 
@@ -21,7 +29,7 @@ npm install
 1. Environment
 
 ```pwsh
-Copy-Item App/.env.example App/.env
+Copy-Item .env.example .env
 php artisan key:generate
 ```
 
@@ -39,12 +47,44 @@ php artisan storage:link
 
 ## Run
 
+Option A (recommended for development): run the app + Vite dev server in two terminals.
+
 ```pwsh
-npm run dev   # or: npm run build && php artisan serve
+php artisan serve
+```
+
+```pwsh
+npm run dev
+```
+
+Option B (single server, no Vite dev server):
+
+```pwsh
+npm run build
+php artisan serve
+```
+
+Then open `http://127.0.0.1:8000/`.
+
+## Implemented Features
+
+- Web UI (`/`): search routes by “From/To”, select corridor, view stops, arrivals (next vehicles), on-time insight, notices, and a map view.
+- API endpoints (JSON):
+	- `GET /api/routes/search?from=...&to=...`
+	- `GET /api/routes/{routeId}`
+	- `GET /api/routes/{routeId}/stops`
+	- `GET /api/routes/{routeId}/stops/{stopId}/arrivals`
+	- `GET /api/routes/{routeId}/vehicles/live`
+	- `GET /api/routes/{routeId}/notices`
+
+## Tests
+
+```pwsh
+php artisan test
 ```
 
 ## Notes
 
 - Keep `.env` out of git; only commit `.env.example`.
-- If you change DB creds or host/port, update `App/.env` accordingly.
+- If you change DB creds or host/port, update `.env` accordingly.
 - Map uses Leaflet + OpenStreetMap tiles via CDN; no API key required.
