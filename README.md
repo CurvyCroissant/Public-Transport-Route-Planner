@@ -1,15 +1,15 @@
 # Public-Transport-Route-Planner
 
-Laravel + Vite demo for a public transport route planner with static demo data (corridors, stops, arrivals, live vehicles, notices, on-time insight, map).
+Laravel + Vite demo for a public transport route planner using **seeded demo data** (corridors, stops, arrivals/ETAs, live vehicles, notices, on-time insight, map).
 
-The Laravel application lives in the `App/` folder.
+The Laravel app lives in `App/`.
 
 ## Prerequisites
 
 - PHP 8.2+
 - Composer
 - Node 18+
-- MySQL (or adjust `.env`)
+- MySQL (default; you can adjust `.env` if needed)
 
 ## Setup
 
@@ -47,7 +47,13 @@ php artisan storage:link
 
 ## Run
 
-Option A (recommended for development): run the app + Vite dev server in two terminals.
+Recommended (single command; runs Laravel + Vite):
+
+```pwsh
+composer run dev
+```
+
+Alternative (two terminals):
 
 ```pwsh
 php artisan serve
@@ -57,7 +63,7 @@ php artisan serve
 npm run dev
 ```
 
-Option B (single server, no Vite dev server):
+Build + serve (no Vite dev server):
 
 ```pwsh
 npm run build
@@ -68,14 +74,15 @@ Then open `http://127.0.0.1:8000/`.
 
 ## Implemented Features
 
-- Web UI (`/`): search routes by “From/To”, select corridor, view stops, arrivals (next vehicles), on-time insight, notices, and a map view.
-- API endpoints (JSON):
-	- `GET /api/routes/search?from=...&to=...`
-	- `GET /api/routes/{routeId}`
-	- `GET /api/routes/{routeId}/stops`
-	- `GET /api/routes/{routeId}/stops/{stopId}/arrivals`
-	- `GET /api/routes/{routeId}/vehicles/live`
-	- `GET /api/routes/{routeId}/notices`
+- Web UI (`/`): search routes by “From/To”, select corridor, view stops, arrivals (next vehicles), on-time insight, notices, and a Leaflet map.
+- JSON API:
+  - `GET /api/routes/search?from=...&to=...`
+  - `GET /api/routes/{routeId}`
+  - `GET /api/routes/{routeId}/stops`
+  - `GET /api/routes/{routeId}/stops/{stopId}/arrivals`
+  - `GET /api/routes/{routeId}/vehicles/live`
+  - `GET /api/routes/{routeId}/notices`
+- Auth demo pages (optional): `/login`, `/register`, `/profile`
 
 ## Tests
 
@@ -88,3 +95,4 @@ php artisan test
 - Keep `.env` out of git; only commit `.env.example`.
 - If you change DB creds or host/port, update `.env` accordingly.
 - Map uses Leaflet + OpenStreetMap tiles via CDN; no API key required.
+- This project is intentionally a **static demo** (no external GTFS / GTFS-RT integration).
