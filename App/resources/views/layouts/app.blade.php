@@ -18,17 +18,30 @@
     <div class="relative overflow-hidden min-h-screen">
 
         <header class="mx-auto w-full max-w-5xl px-4 py-8 flex items-center justify-between">
-            <p class="text-emerald-700 text-sm font-semibold uppercase tracking-[0.16em]">Public Transport Route Planner</p>
+            <a href="{{ url('/') }}"
+                class="text-emerald-700 text-sm font-semibold uppercase tracking-[0.16em] hover:underline {{ request()->routeIs('home') ? 'underline font-bold' : '' }}">Public
+                Transport Route
+                Planner</a>
             <div>
                 @auth
-                    <span class="text-sm text-slate-600">Hello, {{ auth()->user()->name }}</span>
-                    <form method="POST" action="{{ url('/logout') }}" class="inline-block ml-3">
-                        @csrf
-                        <button type="submit" class="text-sm px-3 py-1 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50">Logout</button>
-                    </form>
+                    @php
+                        $fullName = (string) auth()->user()->name;
+                        $trimmedName = trim($fullName);
+                        $parts = preg_split('/\s+/', $trimmedName, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                        $firstWord = $parts[0] ?? '';
+                        $displayName = $firstWord;
+                        if (mb_strlen($firstWord) > 10) {
+                            $displayName = mb_substr($firstWord, 0, 10) . '-';
+                        }
+                    @endphp
+                    <span class="text-sm text-slate-600">Hello, </span>
+                    <a href="{{ route('profile.show') }}"
+                        class="text-sm text-emerald-700 hover:underline {{ request()->routeIs('profile.*') ? 'underline font-semibold' : '' }}">{{ $displayName }}</a>
                 @else
-                    <a href="{{ url('/login') }}" class="text-sm text-emerald-600 mr-3">Login</a>
-                    <a href="{{ url('/register') }}" class="text-sm text-emerald-600">Register</a>
+                    <a href="{{ url('/login') }}"
+                        class="text-sm text-emerald-600 mr-3 hover:underline {{ request()->routeIs('login') ? 'text-emerald-700 underline font-semibold' : '' }}">Login</a>
+                    <a href="{{ url('/register') }}"
+                        class="text-sm text-emerald-600 hover:underline {{ request()->routeIs('register') ? 'text-emerald-700 underline font-semibold' : '' }}">Register</a>
                 @endauth
             </div>
         </header>

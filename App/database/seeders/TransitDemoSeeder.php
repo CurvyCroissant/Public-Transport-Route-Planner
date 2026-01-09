@@ -12,6 +12,51 @@ use Illuminate\Support\Facades\DB;
 
 class TransitDemoSeeder extends Seeder
 {
+    private function computeVehiclePosition(array $stopPoints, string $seed, int $vehicleIndex): ?array
+    {
+        $stopCount = count($stopPoints);
+        if ($stopCount === 0) {
+            return null;
+        }
+
+        $validStopPoints = array_values(array_filter(
+            $stopPoints,
+            fn($p) =>
+            isset($p['lat'], $p['lng']) && $p['lat'] !== null && $p['lng'] !== null
+        ));
+        $validCount = count($validStopPoints);
+
+        if ($validCount === 0) {
+            return null;
+        }
+
+        if ($validCount === 1) {
+            return [
+                'lat' => round((float) $validStopPoints[0]['lat'], 6),
+                'lng' => round((float) $validStopPoints[0]['lng'], 6),
+            ];
+        }
+
+        $hash = abs((int) crc32($seed));
+        $segmentIndex = $vehicleIndex % ($validCount - 1);
+        $a = $validStopPoints[$segmentIndex];
+        $b = $validStopPoints[$segmentIndex + 1];
+
+        // Keep vehicles between stops (not exactly at a stop) and stable across runs.
+        $fraction = 0.25 + (($hash % 5000) / 5000) * 0.5; // 0.25..0.75
+        $lat = (float) $a['lat'] + ((float) $b['lat'] - (float) $a['lat']) * $fraction;
+        $lng = (float) $a['lng'] + ((float) $b['lng'] - (float) $a['lng']) * $fraction;
+
+        // Tiny jitter (~±11m) so multiple vehicles don't overlap exactly.
+        $jitterLat = (((($hash >> 8) % 2000) - 1000) / 9_000_000);
+        $jitterLng = (((($hash >> 20) % 2000) - 1000) / 9_000_000);
+
+        return [
+            'lat' => round($lat + $jitterLat, 6),
+            'lng' => round($lng + $jitterLng, 6),
+        ];
+    }
+
     public function run(): void
     {
         DB::transaction(function () {
@@ -119,23 +164,36 @@ class TransitDemoSeeder extends Seeder
                     'on_time_rate' => $routeData['on_time_rate'],
                 ]);
 
+                $stopPoints = [];
+
                 foreach ($routeData['stops'] as $stop) {
-                    Stop::create([
+                    $createdStop = Stop::create([
                         'route_id' => $route->id,
                         'stop_key' => $stop['stop_key'],
                         'name' => $stop['name'],
                         'lat' => $stop['lat'],
                         'lng' => $stop['lng'],
                     ]);
+
+                    $stopPoints[] = ['lat' => $createdStop->lat, 'lng' => $createdStop->lng];
                 }
 
-                foreach ($routeData['vehicles'] as $vehicle) {
+                foreach (array_values($routeData['vehicles']) as $vehicleIndex => $vehicle) {
+                    $position = null;
+                    if (($vehicle['live'] ?? false) === true) {
+                        $position = $this->computeVehiclePosition(
+                            $stopPoints,
+                            $route->id . '|' . $vehicle['vehicle_key'],
+                            $vehicleIndex
+                        );
+                    }
+
                     Vehicle::create([
                         'route_id' => $route->id,
                         'vehicle_key' => $vehicle['vehicle_key'],
                         'label' => $vehicle['label'],
-                        'lat' => $vehicle['lat'],
-                        'lng' => $vehicle['lng'],
+                        'lat' => $position['lat'] ?? $vehicle['lat'] ?? null,
+                        'lng' => $position['lng'] ?? $vehicle['lng'] ?? null,
                         'live' => $vehicle['live'],
                     ]);
                 }

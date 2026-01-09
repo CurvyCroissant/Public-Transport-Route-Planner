@@ -7,10 +7,13 @@ use App\Models\Notice;
 use App\Models\Stop;
 use App\Models\TransitRoute;
 use App\Models\Vehicle;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 class TransitRepository
 {
     private const ON_TIME_MINUTES = 15;
+    private const OSRM_BASE_URL = 'https://router.project-osrm.org';
 
     private function normalize(?string $value): ?string
     {
@@ -60,6 +63,121 @@ class TransitRepository
             ->count();
 
         return $onTime / $total;
+    }
+
+    private function clamp(float $value, float $min, float $max): float
+    {
+        return max($min, min($max, $value));
+    }
+
+    private function approxDistanceMeters(array $a, array $b): float
+    {
+        $lat1 = deg2rad((float) $a[0]);
+        $lng1 = deg2rad((float) $a[1]);
+        $lat2 = deg2rad((float) $b[0]);
+        $lng2 = deg2rad((float) $b[1]);
+
+        $x = ($lng2 - $lng1) * cos(($lat1 + $lat2) / 2);
+        $y = ($lat2 - $lat1);
+
+        return sqrt(($x * $x) + ($y * $y)) * 6371000;
+    }
+
+    private function pointAlongPolyline(array $polyline, float $t): ?array
+    {
+        $count = count($polyline);
+        if ($count === 0) {
+            return null;
+        }
+        if ($count === 1) {
+            return ['lat' => $polyline[0][0], 'lng' => $polyline[0][1]];
+        }
+
+        $t = $this->clamp($t, 0.0, 1.0);
+
+        $segments = [];
+        $total = 0.0;
+        for ($i = 0; $i < $count - 1; $i++) {
+            $d = $this->approxDistanceMeters($polyline[$i], $polyline[$i + 1]);
+            $segments[] = $d;
+            $total += $d;
+        }
+
+        if ($total <= 0) {
+            return ['lat' => $polyline[0][0], 'lng' => $polyline[0][1]];
+        }
+
+        $target = $total * $t;
+        $acc = 0.0;
+        for ($i = 0; $i < count($segments); $i++) {
+            $d = $segments[$i];
+            if ($acc + $d >= $target) {
+                $localT = $d > 0 ? (($target - $acc) / $d) : 0.0;
+                $a = $polyline[$i];
+                $b = $polyline[$i + 1];
+                return [
+                    'lat' => (float) $a[0] + ((float) $b[0] - (float) $a[0]) * $localT,
+                    'lng' => (float) $a[1] + ((float) $b[1] - (float) $a[1]) * $localT,
+                ];
+            }
+            $acc += $d;
+        }
+
+        return ['lat' => $polyline[$count - 1][0], 'lng' => $polyline[$count - 1][1]];
+    }
+
+    private function getRoadPolylineForRoute(string $routeId): array
+    {
+        $stops = Stop::where('route_id', $routeId)
+            ->orderBy('id')
+            ->get(['lat', 'lng']);
+
+        $coords = $stops
+            ->map(fn($s) => [
+                is_null($s->lat) ? null : (float) $s->lat,
+                is_null($s->lng) ? null : (float) $s->lng,
+            ])
+            ->filter(fn($p) => is_finite($p[0]) && is_finite($p[1]))
+            ->values()
+            ->all();
+
+        if (count($coords) < 2) {
+            return [];
+        }
+
+        $waypoints = implode(';', array_map(fn($p) => $p[1] . ',' . $p[0], $coords));
+        $fingerprint = md5($waypoints);
+        $cacheKey = "osrm:route-polyline:$routeId:$fingerprint";
+
+        return Cache::remember($cacheKey, now()->addHours(12), function () use ($waypoints) {
+            try {
+                $url = self::OSRM_BASE_URL . "/route/v1/driving/$waypoints";
+                $res = Http::timeout(4)
+                    ->retry(1, 150)
+                    ->get($url, [
+                        'overview' => 'full',
+                        'geometries' => 'geojson',
+                    ]);
+
+                if (!$res->ok()) {
+                    return [];
+                }
+
+                $data = $res->json();
+                $coords = $data['routes'][0]['geometry']['coordinates'] ?? null;
+                if (!is_array($coords) || count($coords) < 2) {
+                    return [];
+                }
+
+                // OSRM returns [lng, lat]
+                return array_values(array_map(
+                    fn($pair) => [(float) $pair[1], (float) $pair[0]],
+                    $coords
+                ));
+            } catch (\Throwable $e) {
+                return [];
+            }
+        });
     }
 
     public function searchRoutes(string $from = null, string $to = null): array
@@ -176,16 +294,44 @@ class TransitRepository
 
     public function getLiveVehicles(string $routeId): array
     {
-        return Vehicle::where('route_id', $routeId)
+        $vehicles = Vehicle::where('route_id', $routeId)
             ->where('live', true)
-            ->get()
-            ->map(fn($veh) => [
-                'id' => $veh->vehicle_key,
-                'label' => $veh->label,
-                'lat' => $veh->lat,
-                'lng' => $veh->lng,
-                'live' => (bool) $veh->live,
-            ])
+            ->get();
+
+        $vehiclesCount = max(1, $vehicles->count());
+
+        $polyline = $this->getRoadPolylineForRoute($routeId);
+        $polyCount = count($polyline);
+
+        return $vehicles
+            ->values()
+            ->map(function ($veh, int $idx) use ($polyline, $polyCount, $vehiclesCount) {
+                $lat = $veh->lat;
+                $lng = $veh->lng;
+
+                if ($polyCount >= 2) {
+                    $hash = abs((int) crc32($veh->vehicle_key));
+                    $base = ($hash % 10000) / 10000; // 0..0.9999
+                    $centeredIdx = $idx - (($vehiclesCount - 1) / 2);
+                    $offset = ($centeredIdx / $vehiclesCount) * 0.10;
+                    $t = 0.15 + ($base * 0.70) + $offset;
+                    $t = $this->clamp($t, 0.08, 0.92);
+
+                    $p = $this->pointAlongPolyline($polyline, $t);
+                    if ($p) {
+                        $lat = round((float) $p['lat'], 6);
+                        $lng = round((float) $p['lng'], 6);
+                    }
+                }
+
+                return [
+                    'id' => $veh->vehicle_key,
+                    'label' => $veh->label,
+                    'lat' => $lat,
+                    'lng' => $lng,
+                    'live' => (bool) $veh->live,
+                ];
+            })
             ->all();
     }
 

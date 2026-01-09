@@ -15,5 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Allow re-populating password fields on validation errors.
+        // (Laravel defaults to not flashing passwords.)
+        $exceptions->dontFlash([
+            'current_password',
+        ]);
     })->create();
