@@ -17,9 +17,20 @@
 <body class="bg-white text-slate-900 antialiased" style="font-family: 'DM Sans', sans-serif;">
     <div class="relative overflow-hidden min-h-screen">
 
-        <header class="mx-auto w-full max-w-5xl px-4 py-8">
-            <p class="text-emerald-700 text-sm font-semibold uppercase tracking-[0.16em]">Public Transport Route Planner
-            </p>
+        <header class="mx-auto w-full max-w-5xl px-4 py-8 flex items-center justify-between">
+            <p class="text-emerald-700 text-sm font-semibold uppercase tracking-[0.16em]">Public Transport Route Planner</p>
+            <div>
+                @auth
+                    <span class="text-sm text-slate-600">Hello, {{ auth()->user()->name }}</span>
+                    <form method="POST" action="{{ url('/logout') }}" class="inline-block ml-3">
+                        @csrf
+                        <button type="submit" class="text-sm px-3 py-1 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50">Logout</button>
+                    </form>
+                @else
+                    <a href="{{ url('/login') }}" class="text-sm text-emerald-600 mr-3">Login</a>
+                    <a href="{{ url('/register') }}" class="text-sm text-emerald-600">Register</a>
+                @endauth
+            </div>
         </header>
 
         <main class="mx-auto w-full max-w-5xl px-4 pb-16">
