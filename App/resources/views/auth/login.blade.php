@@ -52,7 +52,7 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <label class="inline-flex items-center text-sm text-slate-700"><input type="checkbox"
-                                name="remember" class="mr-2"> Remember</label>
+                                name="remember" class="mr-2">Remember Me</label>
                         <button type="submit" class="ml-auto rounded-xl px-4 py-2 bg-emerald-500 text-white">Login</button>
                     </div>
                 </form>
