@@ -18,6 +18,5 @@
         "APP_ENV": "production",
         "APP_DEBUG": "false",
         "APP_URL": "https://${VERCEL_URL}"
-    },
-    "excludeFiles": [".env"]
+    }
 }
