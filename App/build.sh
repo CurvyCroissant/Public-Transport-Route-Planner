@@ -1,27 +1,21 @@
 #!/bin/bash
 
-# 1. FIX DIRECTORY: Enter the App folder if we are not already in it
-if [ -d "App" ]; then
-  cd App
-  echo "Changed directory to App/"
-fi
+# Navigate to the App directory
+cd App
 
-# 2. FIX PHP DOWNLOAD: Use a reliable static binary source (tar.gz)
-echo "Downloading Static PHP..."
-mkdir -p bin
-curl -o php.tar.gz https://dl.static-php.dev/static-php-cli/common/php-8.2-cli-linux-x86_64.tar.gz
-
-# 3. EXTRACT: Extract the 'php' binary to the bin/ folder
-tar -xzf php.tar.gz -C bin/
-chmod +x bin/php
-
-# 4. INSTALL COMPOSER & DEPENDENCIES
-echo "Installing Composer..."
-curl -sS https://getcomposer.org/installer | bin/php
-
-echo "Installing Backend Deps..."
-bin/php composer.phar install --no-dev --optimize-autoloader
-
-echo "Building Frontend..."
+# 1. Install Frontend Dependencies & Build
+echo "🚀 Building Frontend..."
 npm install
 npm run build
+
+# 2. Install Backend (Composer)
+# We rely on the system PHP or Vercel's environment here.
+# If this fails, Vercel's fallback usually handles it, 
+# but we want to be explicit.
+if command -v php >/dev/null 2>&1; then
+    echo "🐘 Installing Composer Dependencies..."
+    curl -sS https://getcomposer.org/installer | php
+    php composer.phar install --no-dev --optimize-autoloader --ignore-platform-reqs
+else
+    echo "⚠️ PHP command not found in build step. Relying on Vercel Runtime."
+fi
