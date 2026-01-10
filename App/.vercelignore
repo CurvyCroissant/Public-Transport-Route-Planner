@@ -1,22 +1,4 @@
-# Ignore backend and server-side PHP files — deploy frontend build only
-App/**/views/**
-App/**/*.php
-App/routes/**
-App/app/**
-App/bootstrap/**
-App/config/**
-App/database/**
-App/storage/**
-App/vendor/**
-
-# Local env and secrets
+/vendor
+/node_modules
+/storage/logs
 .env
-App/.env
-.env.*
-
-# Tests, docs, and misc
-tests/**
-README.md
-
-# Keep public build output
-!App/public/**
