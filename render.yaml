@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: public-transport-planner
+    env: docker
+    dockerfilePath: App/Dockerfile
+    branch: main
+    plan: starter
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: '8080'
